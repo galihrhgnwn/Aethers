@@ -159,72 +159,84 @@ export async function handleHelp(message, args) {
             {
                 name: '🔍 Search & Play',
                 value: [
-                    '`!smusic <link>` — Play YouTube or Spotify link',
-                    '`!smusic <judul>` — Search and pick a song',
-                    '`!smusic artist: X` — Search by artist name',
-                    '`!smusic short: X` — Songs under 5 minutes',
-                    '`!smusic long: X` — Songs over 10 minutes',
+                    '`/smusic <link>` — Play YouTube or Spotify link',
+                    '`/smusic <judul>` — Search and pick a song',
+                    '`/smusic artist: X` — Search by artist name',
+                    '`/smusic short: X` — Songs under 5 minutes',
+                    '`/smusic long: X` — Songs over 10 minutes',
                 ].join('\n')
             },
             {
                 name: '📊 Charts',
-                value: '`!smusic chart` — Trending songs with region & genre filter'
+                value: '`/smusic chart` — Trending songs with region & genre filter'
             },
             {
                 name: '⏯ Playback',
                 value: [
-                    '`!smusic pause` / `resume` / `skip` / `stop`',
-                    '`!smusic loop` — Toggle loop',
-                    '`!smusic autoplay` — Toggle autoplay via YouTube algorithm',
-                    '`!smusic volume <1-100>`',
-                    '`!smusic quality <low|medium|high|lossless>`',
-                    '`!smusic keepjoin` — 24/7 Voice Channel',
-                    '`!smusic quitjoin` — Disable 24/7 mode',
+                    '`/smusic pause` / `resume` / `skip` / `stop`',
+                    '`/smusic loop` — Toggle loop',
+                    '`/smusic autoplay` — Toggle autoplay via YouTube algorithm',
+                    '`/smusic volume <1-100>`',
+                    '`/smusic quality <low|medium|high|lossless>`',
+                    '`/smusic keepjoin` — 24/7 Voice Channel',
+                    '`/smusic quitjoin` — Disable 24/7 mode',
                 ].join('\n')
             },
             {
                 name: '📋 Queue',
                 value: [
-                    '`!smusic queue` — View queue (paginated)',
-                    '`!smusic queue clear` / `remove <nomor>`',
-                    '`!smusic shuffle`',
+                    '`/smusic queue` — View queue (paginated)',
+                    '`/smusic queue clear` / `remove <nomor>`',
+                    '`/smusic shuffle`',
                 ].join('\n')
             },
             {
-                name: '💾 Playlist (login required)',
+                name: '📁 Server Playlists',
                 value: [
-                    '`!smusic playlist` — List your YouTube Music playlists',
-                    '`!smusic playlist play <nama>` — Play a playlist from your library',
-                    '`!smusic playlist search <nama>` — Search YouTube Music playlists',
+                    '`/smusic playlist create <name>` — Buat playlist baru',
+                    '`/smusic playlist add <name> <judul/url>` — Tambah lagu',
+                    '`/smusic playlist remove <name> <nomor>` — Hapus lagu dari playlist',
+                    '`/smusic playlist delete <name>` — Hapus playlist',
+                    '`/smusic playlist view <name>` — Lihat isi playlist',
+                    '`/smusic playlist play <name>` — Putar playlist',
+                    '`/smusic playlist list` — Daftar semua playlist',
+                ].join('\n')
+            },
+            {
+                name: '📺 YouTube Playlists (login required)',
+                value: [
+                    '`/smusic playlist` — List your YouTube Music playlists',
+                    '`/smusic playlist play <nama>` — Play a playlist from your library',
+                    '`/smusic playlist search <nama>` — Search YouTube Music playlists',
                     '\n*Note: Playlist diambil langsung dari akun YouTube Music kamu.*',
-                    '*Run !smusic auth login untuk connect akun.*'
+                    '*Run /smusic auth login untuk connect akun.*'
                 ].join('\n')
             },
             {
                 name: 'ℹ️ Info & Misc',
                 value: [
-                    '`!smusic now` — Current song info',
-                    '`!smusic history` — Last 10 played songs',
-                    '`!smusic download` — Download current song',
-                    '`!smusic recommend` — Get song recommendations',
-                    '`!smusic help` — This menu',
+                    '`/smusic now` — Current song info',
+                    '`/smusic history` — Last 10 played songs',
+                    '`/smusic download` — Download current song',
+                    '`/smusic recommend` — Get song recommendations',
+                    '`/smusic help` — This menu',
                 ].join('\n')
             },
             {
                 name: '🔐 Auth',
                 value: [
-                    '`!smusic auth login` — Connect akun YouTube kamu (personal)',
-                    '`!smusic auth status` — Cek status koneksi',
-                    '`!smusic auth logout` — Disconnect akun',
+                    '`/smusic auth login` — Connect akun YouTube kamu (personal)',
+                    '`/smusic auth status` — Cek status koneksi',
+                    '`/smusic auth logout` — Disconnect akun',
                     '\n*Login bersifat opsional tapi memberikan rekomendasi musik yang lebih personal berdasarkan akun YouTube kamu.*'
                 ].join('\n')
             },
             {
                 name: '🖥️ Userbot Screen Share',
                 value: [
-                    '`!userbot screenshare` — Mulai screen share player di voice channel',
-                    '`!userbot status` — Cek status koneksi userbot',
-                    '`!userbot stop` — Hentikan screen share'
+                    '`/userbot screenshare` — Mulai screen share player di voice channel',
+                    '`/userbot status` — Cek status koneksi userbot',
+                    '`/userbot stop` — Hentikan screen share'
                 ].join('\n')
             }
         );

@@ -7,9 +7,9 @@ export function registerCommand(name, handler) {
 }
 
 export async function handleMessage(message) {
-    if (!message.content.startsWith('!smusic ')) return;
+    if (!message.content.startsWith('/smusic ')) return;
 
-    const args = message.content.slice('!smusic'.length).trim().split(/ +/);
+    const args = message.content.slice('/smusic'.length).trim().split(/ +/);
     if (args.length === 0) return;
 
     const commandName = args[0].toLowerCase();

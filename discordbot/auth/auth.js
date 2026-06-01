@@ -22,7 +22,7 @@ export async function handleAuth(message, args) {
         new EmbedBuilder()
           .setDescription(
             `✅ Already logged in as **${profile?.accountName || 'Unknown'}**.\n` +
-            `Run \`!smusic auth logout\` to disconnect.`
+            `Run \`/smusic auth logout\` to disconnect.`
           )
           .setColor(0xFF0000)
           .setFooter({ text: 'smusic bot' })
@@ -108,7 +108,7 @@ export async function handleAuth(message, args) {
 
     if (!loggedIn) {
       embed.setDescription(
-        `Not connected. Run \`!smusic auth login\` to personalize your experience.`
+        `Not connected. Run \`/smusic auth login\` to personalize your experience.`
       )
     }
 

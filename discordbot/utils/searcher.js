@@ -16,7 +16,7 @@ export function parsePrefix(rawQuery) {
 
 const MUSIC_KEYWORDS = ['music', 'song', 'lyrics', 'official', 'audio', 'mv', 'lagu']
 
-export async function searchSongs(rawQuery, requesterId = null) {
+export async function searchSongs(rawQuery, requesterId = null, limit = 5) {
   const { mode, cleanQuery } = parsePrefix(rawQuery)
 
   let results = []
@@ -129,7 +129,7 @@ export async function searchSongs(rawQuery, requesterId = null) {
   }
 
   results.sort((a, b) => (b.views || 0) - (a.views || 0))
-  return results.slice(0, 5)
+  return results.slice(0, limit)
 }
 
 export function formatViews(views) {

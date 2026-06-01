@@ -171,22 +171,23 @@ async function handleSearch(message, input) {
   if (!preCheck(message)) return;
 
   try {
-    const results = await searchSongs(input, message.author.id);
+    const results = await searchSongs(input, message.author.id, 8);
     if (!results.length) {
       return message.reply({ embeds: [errorEmbed(`No results found for: **${input}**`)] });
     }
 
     const desc = results.map((v, i) => {
       const dur = v.durationStr || '?:??'
-      const viewStr = v.views ? ` • ${v.views}` : ''
-      const authorStr = v.author ? `${v.author} • ` : ''
-      return `**${i + 1}.** ${v.title}\n└ ${authorStr}${dur}${viewStr}`
+      const viewStr = v.views ? ` • ${v.views}${v.views.includes('views') ? '' : ' views'}` : ''
+      const authorStr = v.author ? ` — ${v.author}` : ''
+      return `**${i + 1}.** ${v.title}${authorStr}\n└ ${dur}${viewStr}`
     }).join('\n\n');
 
     const embed = new EmbedBuilder()
       .setTitle('🔍 Search Results')
       .setDescription(desc)
       .setColor(0xFF0000)
+      .setThumbnail(results[0].thumbnail?.url || results[0].thumbnail || null)
       .setFooter({ text: 'Pick a song • Times out in 30s • smusic bot' });
 
     const buttons = results.map((_, i) =>
@@ -195,9 +196,13 @@ async function handleSearch(message, input) {
         .setLabel(String(i + 1))
         .setStyle(ButtonStyle.Secondary)
     );
-    const row = new ActionRowBuilder().addComponents(buttons);
 
-    const reply = await message.reply({ embeds: [embed], components: [row] });
+    const rows = [];
+    for (let i = 0; i < buttons.length; i += 5) {
+      rows.push(new ActionRowBuilder().addComponents(buttons.slice(i, i + 5)));
+    }
+
+    const reply = await message.reply({ embeds: [embed], components: rows });
 
     const filter = i => i.user.id === message.author.id && i.customId.startsWith('pick_');
     const collector = reply.createMessageComponentCollector({ filter, time: 30000, max: 1 });
@@ -206,10 +211,12 @@ async function handleSearch(message, input) {
       const index = parseInt(interaction.customId.replace('pick_', ''), 10);
       const picked = results[index];
 
-      const disabledRow = new ActionRowBuilder().addComponents(
-        buttons.map(b => ButtonBuilder.from(b).setDisabled(true))
+      const disabledRows = rows.map(row =>
+        new ActionRowBuilder().addComponents(
+          row.components.map(b => ButtonBuilder.from(b).setDisabled(true))
+        )
       );
-      await interaction.update({ components: [disabledRow] });
+      await interaction.update({ components: disabledRows });
 
       const guildId = message.guild.id;
       const voiceChannel = message.member.voice.channel;
@@ -219,8 +226,8 @@ async function handleSearch(message, input) {
         videoId: picked.videoId,
         title: picked.title,
         url: picked.url,
-        duration: picked.duration.seconds,
-        thumbnail: picked.thumbnail?.url || '',
+        duration: picked.duration.seconds || picked.duration || 0,
+        thumbnail: picked.thumbnail?.url || picked.thumbnail || '',
         requester: message.author.tag,
         requesterId: message.author.id,
         quality,
@@ -239,10 +246,14 @@ async function handleSearch(message, input) {
 
     collector.on('end', (collected, reason) => {
       if (reason === 'time') {
-        const disabledRow = new ActionRowBuilder().addComponents(
-          buttons.map(b => ButtonBuilder.from(b).setDisabled(true))
+        const disabledRows = rows.map(row =>
+          new ActionRowBuilder().addComponents(
+            row.components.map(b => ButtonBuilder.from(b).setDisabled(true))
+          )
         );
-        reply.edit({ components: [disabledRow] }).catch(() => {});
+        const timedOutEmbed = EmbedBuilder.from(embed)
+          .setDescription(embed.data.description + '\n\n*⏱ Selection timed out.*');
+        reply.edit({ embeds: [timedOutEmbed], components: disabledRows }).catch(() => {});
       }
     });
   } catch (e) {
