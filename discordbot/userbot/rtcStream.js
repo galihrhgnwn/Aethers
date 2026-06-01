@@ -1,12 +1,11 @@
-import { Streamer, playStream } from '@dank074/discord-video-stream'
 import { spawn } from 'child_process'
+import { Streamer, playStream } from '@dank074/discord-video-stream'
 import { state } from './overlayState.js'
+import ffmpegStatic from 'ffmpeg-static'
 
-let streamer = null
-let videoLoop = null
-let ffmpegProcess = null
-let currentGuildId = null
-let currentChannelId = null
+let streamer   = null
+let videoLoop  = null
+let ffmpegProc = null
 
 export function initStreamer(client) {
   if (!streamer) {
@@ -18,135 +17,141 @@ export function initStreamer(client) {
 export async function startVideoStream(guildId, channelId, getFrameFn) {
   try {
     if (!streamer) throw new Error('Streamer not initialized')
-    
+
     console.log(`[RTC] Joining voice: guild=${guildId}, channel=${channelId}`)
     await streamer.joinVoice(guildId, channelId)
-    
-    currentGuildId = guildId
-    currentChannelId = channelId
 
-    // Tunggu koneksi UDP stabil (2 detik)
-    await new Promise(resolve => setTimeout(resolve, 2000))
+    await new Promise(r => setTimeout(r, 2000))
 
     console.log('[RTC] Preparing ffmpeg manual spawn...')
-    
-    const audioUrl = state.currentSong?.url
+
+    const ffmpegBin = ffmpegStatic || 'ffmpeg'
+    const songUrl   = state?.currentSong?.url ?? null
+    const hasAudio  = !!songUrl
+
     const args = [
-      '-f', 'rawvideo',
-      '-pix_fmt', 'rgba',
+      '-f',          'rawvideo',
+      '-pix_fmt',    'rgba',
       '-video_size', '1280x720',
-      '-framerate', '30',
-      '-i', 'pipe:0'
+      '-framerate',  '30',
+      '-i',          'pipe:0',
     ]
 
-    // Jika ada lagu yang sedang diputar, tambahkan sebagai input audio
-    const hasAudio = audioUrl && audioUrl.startsWith('http')
     if (hasAudio) {
-      args.push('-i', audioUrl)
+      args.push(
+        '-reconnect',           '1',
+        '-reconnect_streamed',  '1',
+        '-reconnect_delay_max', '5',
+        '-i', songUrl,
+      )
     }
 
     args.push(
-      '-map', '0:v',
-      ...(hasAudio ? ['-map', '1:a'] : []),
-      '-vf', 'scale=1280:720',
-      '-c:v', 'libx264',
-      '-preset', 'ultrafast',
-      '-tune', 'zerolatency',
-      '-pix_fmt', 'yuv420p',
-      '-b:v', '3000k',
-      '-maxrate', '5000k',
-      '-bufsize', '6000k',
-      '-g', '60',
-      '-keyint_min', '60'
+      '-map',        '0:v',
+      '-c:v',        'libx264',
+      '-preset',     'ultrafast',
+      '-tune',       'zerolatency',
+      '-pix_fmt',    'yuv420p',
+      '-b:v',        '3000k',
+      '-maxrate',    '5000k',
+      '-bufsize',    '6000k',
+      '-g',          '60',
+      '-keyint_min', '60',
+      '-r',          '30',
     )
 
     if (hasAudio) {
-      args.push('-c:a', 'libopus', '-b:a', '128k')
+      args.push(
+        '-map',  '1:a',
+        '-c:a',  'libopus',
+        '-b:a',  '128k',
+        '-ar',   '48000',
+        '-ac',   '2',
+      )
     }
 
     args.push('-f', 'mpegts', 'pipe:1')
 
-    ffmpegProcess = spawn('ffmpeg', args)
+    ffmpegProc = spawn(ffmpegBin, args, {
+      stdio: ['pipe', 'pipe', 'pipe'],
+    })
 
-    ffmpegProcess.stderr.on('data', (data) => {
-      const msg = data.toString()
-      // Hanya log error atau info penting jika diperlukan untuk debugging
-      if (msg.toLowerCase().includes('error')) {
-        console.error('[RTC] FFmpeg stderr:', msg.trim())
+    ffmpegProc.stdin.on('error', (err) => {
+      if (err.code !== 'EPIPE') {
+        console.error('[RTC] stdin error:', err.message)
       }
     })
 
-    ffmpegProcess.on('error', (err) => {
-      console.error('[RTC] FFmpeg process error:', err)
-    })
-
-    ffmpegProcess.on('close', (code) => {
-      if (code !== null && code !== 0 && code !== 255) {
-        console.log(`[RTC] FFmpeg process closed with code ${code}`)
+    ffmpegProc.stderr.on('data', (d) => {
+      const line = d.toString()
+      if (/error|invalid|no such|failed/i.test(line) && !/^\s*$/.test(line)) {
+        console.error('[RTC][ffmpeg]', line.trim().slice(0, 300))
       }
     })
 
-    // Play to Discord menggunakan stdout ffmpeg
-    playStream(ffmpegProcess.stdout, streamer, { type: 'go-live' }).catch(err => {
-      console.error('[RTC] playStream error:', err)
+    ffmpegProc.on('error', (err) => {
+      console.error('[RTC] FFmpeg spawn error:', err.message)
     })
-    
-    const frameDelay = Math.floor(1000 / 30) // 30fps
+
+    ffmpegProc.on('exit', (code, signal) => {
+      console.log(`[RTC] FFmpeg exited code=${code} signal=${signal}`)
+      _cleanup(false)
+    })
+
+    playStream(ffmpegProc.stdout, streamer, { type: 'go-live' }).catch((err) => {
+      const msg = err?.message ?? ''
+      if (!msg.includes('ended') && !msg.includes('abort')) {
+        console.error('[RTC] playStream error:', msg)
+      }
+    })
+
+    const frameDelay = Math.floor(1000 / 30)
     let isWriting = false
-    
+
     videoLoop = setInterval(async () => {
       if (isWriting) return
-      if (!ffmpegProcess || !ffmpegProcess.stdin || ffmpegProcess.stdin.writableEnded) return
-
+      if (!ffmpegProc || ffmpegProc.killed || ffmpegProc.stdin.destroyed) return
       isWriting = true
       try {
-        const rgbaBuffer = await getFrameFn()
-        
-        if (rgbaBuffer && rgbaBuffer.length === 1280 * 720 * 4) {
-          ffmpegProcess.stdin.write(rgbaBuffer)
-        }
+        const rgba = await getFrameFn()
+        if (!rgba || rgba.length !== 3686400) return
+        ffmpegProc.stdin.write(rgba)
       } catch (e) {
-        console.error('[RTC] Frame render error', e)
+        if (e.code !== 'EPIPE') console.error('[RTC] Frame error:', e.message)
       } finally {
         isWriting = false
       }
     }, frameDelay)
-    
-    console.log('[RTC] ✅ Screen share started' + (hasAudio ? ' with audio' : ''))
+
+    console.log(hasAudio ? '[RTC] ✅ Screen share started with audio' : '[RTC] ✅ Screen share started (video only)')
+
   } catch (e) {
     console.error('[RTC] Fatal error in startVideoStream:', e)
+    _cleanup(true)
   }
 }
 
 export function stopVideoStream() {
+  _cleanup(true)
+  console.log('[RTC] 🛑 Video stream stopped')
+}
+
+function _cleanup(leaveVoice = true) {
   if (videoLoop) {
     clearInterval(videoLoop)
     videoLoop = null
   }
-  
-  if (ffmpegProcess) {
+
+  if (ffmpegProc) {
     try {
-      if (!ffmpegProcess.stdin.writableEnded) {
-        ffmpegProcess.stdin.end()
-      }
-      ffmpegProcess.kill('SIGKILL')
-    } catch (e) {
-      console.error('[RTC] Error killing ffmpeg:', e)
-    }
-    ffmpegProcess = null
+      if (!ffmpegProc.stdin.destroyed) ffmpegProc.stdin.destroy()
+      if (!ffmpegProc.killed)          ffmpegProc.kill('SIGKILL')
+    } catch (_) {}
+    ffmpegProc = null
   }
 
-  if (streamer) {
-    try {
-      streamer.stopStream()
-      streamer.leaveVoice()
-    } catch (e) {
-      console.error('[RTC] Failed to leave voice gracefully:', e)
-    }
+  if (streamer && leaveVoice) {
+    try { streamer.stopStream() } catch (_) {}
+    try { streamer.leaveVoice() } catch (_) {}
   }
-
-  currentGuildId = null
-  currentChannelId = null
-
-  console.log('[RTC] 🛑 Video stream stopped')
 }
