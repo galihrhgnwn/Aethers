@@ -126,18 +126,18 @@ You will be greeted with an interactive prompt offering two modes:
 
 ## 📖 Commands Reference
 
-Once invited and active in your server, use the default prefix `!smusic` (can be configured) followed by the command:
+Once invited and active in your server, use the default prefix `/smusic` (can be configured) followed by the command:
 
 * **Playback:**
-  - `!smusic play <query>` - Searches and plays a track/video.
-  - `!smusic skip` - Skips the current track in the active queue.
-  - `!smusic pause` / `!smusic resume` - Freezes or unfreezes the current audio chunk.
+  - `/smusic play <query>` - Searches and plays a track/video.
+  - `/smusic skip` - Skips the current track in the active queue.
+  - `/smusic pause` / `/smusic resume` - Freezes or unfreezes the current audio chunk.
 * **Queue Management:**
-  - `!smusic queue` - Displays all upcoming tracks in sequence. 
-  - `!smusic clear` - Flushes the entire queue.
+  - `/smusic queue` - Displays all upcoming tracks in sequence.
+  - `/smusic clear` - Flushes the entire queue.
 * **Utility:**
-  - `!smusic volume <1-100>` - Modifies global playback amplitude.
-  - `!smusic stats` - Returns localized bot heartbeat and module load variables.
+  - `/smusic volume <1-100>` - Modifies global playback amplitude.
+  - `/smusic stats` - Returns localized bot heartbeat and module load variables.
 
 ---
 

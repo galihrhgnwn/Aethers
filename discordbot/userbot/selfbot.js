@@ -78,7 +78,7 @@ export async function startUserbot({ token, guildId }) {
   })
 
   selfClient.on('messageCreate', async (message) => {
-    if (!message.content.startsWith('!userbot')) return
+    if (!message.content.startsWith('/userbot')) return
     
     const args = message.content.split(' ')
     const sub = args[1]
@@ -101,6 +101,31 @@ export async function startUserbot({ token, guildId }) {
         await message.reply('✅ Screen share dimulai')
       } catch (e) {
         await message.reply('❌ Gagal: ' + e.message)
+      }
+    }
+
+    if (sub === 'joinvc') {
+      const guild = selfClient.guilds.cache.get(guildId)
+      if (!guild) return
+
+      const member = guild.members.cache.get(message.author.id)
+      const targetChannelId = member?.voice?.channelId
+      const targetChannelName = member?.voice?.channel?.name
+
+      if (!targetChannelId) {
+        await message.reply('❌ Kamu harus berada di voice channel terlebih dahulu.')
+        return
+      }
+
+      try {
+        stopVideoStream()
+        await new Promise(r => setTimeout(r, 500))
+        await startVideoStream(guildId, targetChannelId, async () => {
+          return await renderFrame(state)
+        })
+        await message.reply(`✅ Userbot bergabung ke **${targetChannelName}** dan memulai screen share.`)
+      } catch (e) {
+        await message.reply('❌ Gagal bergabung: ' + e.message)
       }
     }
     
